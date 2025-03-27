@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CanvasOptions, init, registerEventListeners } from "./functions";
+import { init, registerEventListeners } from "./functions";
 import Menu from "./menu/menu";
-import { useEditorStore } from "./store";
+import { CanvasOptions, useEditorStore } from "./store";
 
 interface EditorProps {
   canvasOptions?: CanvasOptions;
@@ -11,13 +11,7 @@ interface EditorProps {
 
 const Editor: React.FC<EditorProps> = ({ canvasOptions }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { setContext, selectedElement } = useEditorStore();
-
-  useEffect(() => {
-    if (selectedElement) {
-      console.log(selectedElement.id);
-    }
-  }, [selectedElement?.id]);
+  const { setContext, setCanvasOptions } = useEditorStore();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -25,6 +19,7 @@ const Editor: React.FC<EditorProps> = ({ canvasOptions }) => {
       const context = canvas.getContext("2d");
       init(canvas, canvasOptions);
       setContext(context!);
+      setCanvasOptions(canvasOptions);
     }
   }, []);
 
