@@ -257,7 +257,7 @@ export class BoxElement extends BaseElement {
     }
   }
 
-  drawArrow(startPoint: { x: number; y: number }, endPoint: { x: number; y: number }, style: ArrowStyle = "direct") {
+  drawArrow(startPoint: { x: number; y: number }, endPoint: { x: number; y: number }, style: ArrowStyle = "direct", isSelected: boolean = false) {
     this.context.beginPath();
     this.context.moveTo(startPoint.x, startPoint.y);
 
@@ -322,8 +322,8 @@ export class BoxElement extends BaseElement {
       endPoint.y - arrowLength * Math.sin(angle + Math.PI / 6)
     );
     
-    this.context.strokeStyle = this.styles.strokeStyle;
-    this.context.lineWidth = 2;
+    this.context.strokeStyle = isSelected ? "#4F46E5" : this.styles.strokeStyle;
+    this.context.lineWidth = isSelected ? 3 : 2;
     this.context.stroke();
   }
 
@@ -351,7 +351,7 @@ export class BoxElement extends BaseElement {
 
     // Draw the current arrow being drawn (if any)
     if (this.isArrowStart && this.arrowStartPoint && this.arrowEndPoint) {
-      this.drawArrow(this.arrowStartPoint, this.arrowEndPoint);
+      this.drawArrow(this.arrowStartPoint, this.arrowEndPoint, "direct", this.isSelected);
     }
 
     if (this.can_render_text) {
@@ -374,5 +374,87 @@ export class BoxElement extends BaseElement {
         );
       }
     }
+  }
+
+  isNearArrow(startPoint: { x: number; y: number }, endPoint: { x: number; y: number }, mouseX: number, mouseY: number, style: ArrowStyle = "direct"): boolean {
+    const threshold = 5; // Distance threshold for hit detection
+
+    switch (style) {
+      case "direct":
+        return this.isNearLine(startPoint, endPoint, mouseX, mouseY, threshold);
+
+      case "right-angle":
+        const midX = (startPoint.x + endPoint.x) / 2;
+        const points = [
+          startPoint,
+          { x: midX, y: startPoint.y },
+          { x: midX, y: endPoint.y },
+          endPoint
+        ];
+        return this.isNearPolyline(points, mouseX, mouseY, threshold);
+
+      case "curve":
+        const dx = endPoint.x - startPoint.x;
+        const controlPoint1 = { x: startPoint.x + dx * 0.5, y: startPoint.y };
+        const controlPoint2 = { x: startPoint.x + dx * 0.5, y: endPoint.y };
+        return this.isNearBezierCurve(startPoint, controlPoint1, controlPoint2, endPoint, mouseX, mouseY, threshold);
+    }
+  }
+
+  private isNearLine(p1: { x: number; y: number }, p2: { x: number; y: number }, mouseX: number, mouseY: number, threshold: number): boolean {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const length = Math.sqrt(dx * dx + dy * dy);
+    
+    if (length === 0) return false;
+    
+    const t = ((mouseX - p1.x) * dx + (mouseY - p1.y) * dy) / (length * length);
+    const projectionX = p1.x + t * dx;
+    const projectionY = p1.y + t * dy;
+    
+    const distance = Math.sqrt(
+      Math.pow(mouseX - projectionX, 2) + 
+      Math.pow(mouseY - projectionY, 2)
+    );
+    
+    return distance <= threshold;
+  }
+
+  private isNearPolyline(points: { x: number; y: number }[], mouseX: number, mouseY: number, threshold: number): boolean {
+    for (let i = 0; i < points.length - 1; i++) {
+      if (this.isNearLine(points[i], points[i + 1], mouseX, mouseY, threshold)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private isNearBezierCurve(
+    p1: { x: number; y: number },
+    cp1: { x: number; y: number },
+    cp2: { x: number; y: number },
+    p2: { x: number; y: number },
+    mouseX: number,
+    mouseY: number,
+    threshold: number
+  ): boolean {
+    // Approximate the curve with line segments
+    const steps = 20;
+    const points = [];
+    
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const x = Math.pow(1 - t, 3) * p1.x +
+                3 * Math.pow(1 - t, 2) * t * cp1.x +
+                3 * (1 - t) * Math.pow(t, 2) * cp2.x +
+                Math.pow(t, 3) * p2.x;
+      const y = Math.pow(1 - t, 3) * p1.y +
+                3 * Math.pow(1 - t, 2) * t * cp1.y +
+                3 * (1 - t) * Math.pow(t, 2) * cp2.y +
+                Math.pow(t, 3) * p2.y;
+      points.push({ x, y });
+    }
+    
+    return this.isNearPolyline(points, mouseX, mouseY, threshold);
   }
 }

@@ -31,19 +31,43 @@ const getClickedElement = (event: MouseEvent) => {
 };
 
 export const onClick = (event: MouseEvent) => {
-  const { elements, setSelectedElementId, parentElement } =
+  const { elements, setSelectedElementId, setSelectedElementIds, setSelectedArrowId, parentElement, arrows } =
     useEditorStore.getState();
+  
+  // Check for arrow clicks first
+  for (const arrow of arrows) {
+    const startElement = elements.find(e => e.id === arrow.startElementId);
+    const endElement = elements.find(e => e.id === arrow.endElementId);
+    
+    if (startElement && endElement) {
+      const startPoint = startElement.getBorderPoint(arrow.startBorder);
+      const endPoint = endElement.getBorderPoint(arrow.endBorder);
+      
+      if (startElement.isNearArrow(startPoint, endPoint, event.offsetX, event.offsetY, arrow.style)) {
+        setSelectedArrowId({ startElementId: arrow.startElementId, endElementId: arrow.endElementId });
+        setSelectedElementId(null);
+        setSelectedElementIds([]);
+        return;
+      }
+    }
+  }
+
+  // Handle element clicks
   const clickedElement = getClickedElement(event);
   if (!clickedElement) {
     setSelectedElementId(null);
+    setSelectedElementIds([]);
+    setSelectedArrowId(null);
     elements.forEach((e) => {
       e.can_render_text = true;
       e.draw();
     });
     return;
   }
+  
   clickedElement.onClick(parentElement!);
   setSelectedElementId(clickedElement.id);
+  setSelectedArrowId(null);
 };
 
 export const onMouseDown = (event: MouseEvent) => {

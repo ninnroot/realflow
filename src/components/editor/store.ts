@@ -44,6 +44,7 @@ export interface EditorStoreState {
   pushElement: (element: ElementType) => void;
   addElement: () => void;
   deleteSelectedElements: () => void;
+  deletedSelectedArrows: () => void;
 
   mouseDownOrigin: { x: number; y: number } | null;
   setMouseDownOrigin: (origin: { x: number; y: number }|null) => void;
@@ -65,6 +66,9 @@ export interface EditorStoreState {
 
   arrowStyle: ArrowStyle;
   setArrowStyle: (style: ArrowStyle) => void;
+
+  selectedArrowId: { startElementId: number; endElementId: number } | null;
+  setSelectedArrowId: (id: { startElementId: number; endElementId: number } | null) => void;
 }
 
 export const useEditorStore = create<EditorStoreState>()((set, get) => ({
@@ -108,18 +112,31 @@ export const useEditorStore = create<EditorStoreState>()((set, get) => ({
   deleteSelectedElements: () => {
     set((state) => {
       const selectedIds = state.selectedElementIds;
+      const selectedArrow = state.selectedArrowId;
+      
       // Remove selected elements
       const newElements = state.elements.filter(e => !selectedIds.includes(e.id));
-      // Remove arrows connected to selected elements
+      
+      // Remove arrows connected to selected elements or the selected arrow
       const newArrows = state.arrows.filter(
-        arrow => !selectedIds.includes(arrow.startElementId) && !selectedIds.includes(arrow.endElementId)
+        arrow => 
+          (!selectedIds.includes(arrow.startElementId) && !selectedIds.includes(arrow.endElementId)) &&
+          (!selectedArrow || arrow.startElementId !== selectedArrow.startElementId || arrow.endElementId !== selectedArrow.endElementId)
       );
+      
       return {
         elements: newElements,
         arrows: newArrows,
         selectedElementIds: [],
-        selectedElementId: null
+        selectedElementId: null,
+        selectedArrowId: null
       };
+    });
+  },
+  deletedSelectedArrows: () => {
+    set((state) => {
+      const selectedArrow = state.selectedArrowId;
+      return { selectedArrowId: null };
     });
   },
   selectionRect: null,
@@ -163,7 +180,9 @@ export const useEditorStore = create<EditorStoreState>()((set, get) => ({
       if (startElement && endElement) {
         const startPoint = startElement.getBorderPoint(arrow.startBorder);
         const endPoint = endElement.getBorderPoint(arrow.endBorder);
-        startElement.drawArrow(startPoint, endPoint, arrow.style);
+        const isSelected = state.selectedArrowId?.startElementId === arrow.startElementId && 
+                          state.selectedArrowId?.endElementId === arrow.endElementId;
+        startElement.drawArrow(startPoint, endPoint, arrow.style, isSelected);
       }
     });
   },
@@ -214,4 +233,6 @@ export const useEditorStore = create<EditorStoreState>()((set, get) => ({
       arrows: updatedArrows
     };
   }),
+  selectedArrowId: null,
+  setSelectedArrowId: (id) => set({ selectedArrowId: id }),
 }));
