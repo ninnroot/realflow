@@ -11,13 +11,14 @@ interface EditorProps {
 
 const Editor: React.FC<EditorProps> = ({ canvasOptions }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const divRef = useRef<HTMLDivElement>(null);
   const { setContext, setCanvasOptions } = useEditorStore();
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
       const context = canvas.getContext("2d");
-      init(canvas, canvasOptions);
+      init(canvas, canvasOptions, divRef.current!);
       setContext(context!);
       setCanvasOptions(canvasOptions);
     }
@@ -26,7 +27,7 @@ const Editor: React.FC<EditorProps> = ({ canvasOptions }) => {
   return (
     <div>
       <Menu></Menu>
-      <div className="border-2 border-gray-300">
+      <div ref={divRef} className="border-2 border-gray-300 relative">
         <canvas ref={canvasRef}></canvas>
       </div>
     </div>

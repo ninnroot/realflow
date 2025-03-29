@@ -35,6 +35,10 @@ export interface EditorStoreState {
   setMouseDownOrigin: (origin: { x: number; y: number }|null) => void;
 
   drawBackground: () => void;
+
+  // canvas container for positioning input elements
+  parentElement: HTMLElement | null;
+  setParentElement: (parentElement: HTMLElement) => void;
 }
 
 export const useEditorStore = create<EditorStoreState>()((set) => ({
@@ -57,16 +61,24 @@ export const useEditorStore = create<EditorStoreState>()((set) => ({
     })),
   addElement: () => {
     const state = useEditorStore.getState();
-    const element = new BoxElement(state.currentId, state.context!);
+    const element = new BoxElement(state.currentId, state.context!, state.drawBackground, () => {
+
+      state.elements.forEach((e) => {
+        e.draw()
+      })
+    });
     state.pushElement(element);
     element.draw();
   },
 
   mouseDownOrigin: null,
   setMouseDownOrigin: (origin) => set({ mouseDownOrigin: origin }),
+
   drawBackground: () => {
     const state = useEditorStore.getState();
     state.context!.fillStyle = state.canvasOptions.backgroundColor;
     state.context!.fillRect(0, 0, state.canvasOptions.width, state.canvasOptions.height);
-  }
+  },
+  parentElement: null,
+  setParentElement: (parentElement) => set({ parentElement }),
 }));

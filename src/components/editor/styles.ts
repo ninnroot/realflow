@@ -2,8 +2,8 @@ import { CSSProperties } from "react";
 
 export interface Styles {
     fontStyle: CSSProperties["fontStyle"]
-    fontSize: CSSProperties["fontSize"]
     fontWeight: CSSProperties["fontWeight"]
+    fontSize: CSSProperties["fontSize"]
     fontFamily: CSSProperties["fontFamily"]
     strokeStyle: CanvasRenderingContext2D["strokeStyle"]
     fillStyle: CanvasRenderingContext2D["fillStyle"]
@@ -11,9 +11,9 @@ export interface Styles {
 
 export const defaultStyles: Styles = {
     fontStyle: "normal",
-    fontSize: "16px",
+    fontSize: 16,
     fontWeight: "normal",
-    fontFamily: "Arial",
+    fontFamily: "arial",
     strokeStyle: "black",
     fillStyle: "white",
 }
