@@ -280,7 +280,8 @@ const onMouseUp = (event: MouseEvent, canvas: HTMLCanvasElement) => {
       startElementId: arrowStartElement.id,
       endElementId: targetElement.id,
       startBorder: arrowStartElement.proximateBorder!,
-      endBorder: targetElement.proximateBorder
+      endBorder: targetElement.proximateBorder,
+      style: useEditorStore.getState().arrowStyle
     });
     arrowStartElement.isArrowStart = false;
     targetElement.isArrowEnd = true;

@@ -1,6 +1,7 @@
 import { defaultStyles, Styles } from "../styles";
 import { BaseElement } from "./base";
 import { useEditorStore } from "../store";
+import { ArrowStyle } from "../store";
 
 export class BoxElement extends BaseElement {
   width: number = 0;
@@ -256,13 +257,58 @@ export class BoxElement extends BaseElement {
     }
   }
 
-  drawArrow(startPoint: { x: number; y: number }, endPoint: { x: number; y: number }) {
+  drawArrow(startPoint: { x: number; y: number }, endPoint: { x: number; y: number }, style: ArrowStyle = "direct") {
     this.context.beginPath();
     this.context.moveTo(startPoint.x, startPoint.y);
-    this.context.lineTo(endPoint.x, endPoint.y);
+
+    let lastSegmentStart = startPoint;
+    let lastSegmentEnd = endPoint;
+
+    switch (style) {
+      case "direct":
+        this.context.lineTo(endPoint.x, endPoint.y);
+        break;
+
+      case "right-angle":
+        // Calculate the midpoint for right-angle connection
+        const midX = (startPoint.x + endPoint.x) / 2;
+        this.context.lineTo(midX, startPoint.y);
+        this.context.lineTo(midX, endPoint.y);
+        this.context.lineTo(endPoint.x, endPoint.y);
+        lastSegmentStart = { x: midX, y: endPoint.y };
+        break;
+
+      case "curve":
+        // Calculate control points for a smooth curve
+        const dx = endPoint.x - startPoint.x;
+        const dy = endPoint.y - startPoint.y;
+        
+        // Create two control points for a cubic bezier curve
+        const controlPoint1 = {
+          x: startPoint.x + dx * 0.5,
+          y: startPoint.y
+        };
+        const controlPoint2 = {
+          x: startPoint.x + dx * 0.5,
+          y: endPoint.y
+        };
+        
+        // Draw the curve using cubic bezier curve
+        this.context.bezierCurveTo(
+          controlPoint1.x, controlPoint1.y,
+          controlPoint2.x, controlPoint2.y,
+          endPoint.x, endPoint.y
+        );
+        // For curves, we'll use the last control point to calculate the angle
+        lastSegmentStart = controlPoint2;
+        break;
+    }
     
-    // Draw arrowhead
-    const angle = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x);
+    // Draw arrowhead using the last segment's angle
+    const angle = Math.atan2(
+      endPoint.y - lastSegmentStart.y,
+      endPoint.x - lastSegmentStart.x
+    );
     const arrowLength = 15;
     const arrowWidth = 10;
     

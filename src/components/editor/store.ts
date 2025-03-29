@@ -4,11 +4,14 @@ import { BoxElement } from "./elements/box";
 import { BaseElement } from "./elements/base";
 import { CSSProperties } from "react";
 
+export type ArrowStyle = "direct" | "right-angle" | "curve";
+
 export interface ArrowConnection {
   startElementId: number;
   endElementId: number;
   startBorder: "top" | "bottom" | "left" | "right";
   endBorder: "top" | "bottom" | "left" | "right";
+  style: ArrowStyle;
 }
 
 export interface CanvasOptions {
@@ -59,6 +62,9 @@ export interface EditorStoreState {
   arrows: ArrowConnection[];
   addArrow: (arrow: ArrowConnection) => void;
   removeArrow: (startElementId: number, endElementId: number) => void;
+
+  arrowStyle: ArrowStyle;
+  setArrowStyle: (style: ArrowStyle) => void;
 }
 
 export const useEditorStore = create<EditorStoreState>()((set, get) => ({
@@ -157,7 +163,7 @@ export const useEditorStore = create<EditorStoreState>()((set, get) => ({
       if (startElement && endElement) {
         const startPoint = startElement.getBorderPoint(arrow.startBorder);
         const endPoint = endElement.getBorderPoint(arrow.endBorder);
-        startElement.drawArrow(startPoint, endPoint);
+        startElement.drawArrow(startPoint, endPoint, arrow.style);
       }
     });
   },
@@ -181,7 +187,7 @@ export const useEditorStore = create<EditorStoreState>()((set, get) => ({
         return state; // Return unchanged state if arrow already exists
       }
 
-      const newArrows = [...state.arrows, arrow];
+      const newArrows = [...state.arrows, { ...arrow, style: state.arrowStyle }];
       console.log('New arrows state:', newArrows);
       return { arrows: newArrows };
     });
@@ -196,4 +202,16 @@ export const useEditorStore = create<EditorStoreState>()((set, get) => ({
       return { arrows: newArrows };
     });
   },
+  arrowStyle: "direct",
+  setArrowStyle: (style) => set((state) => {
+    // Update all existing arrows with the new style
+    const updatedArrows = state.arrows.map(arrow => ({
+      ...arrow,
+      style
+    }));
+    return { 
+      arrowStyle: style,
+      arrows: updatedArrows
+    };
+  }),
 }));
