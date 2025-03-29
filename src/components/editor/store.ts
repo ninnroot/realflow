@@ -35,12 +35,19 @@ export interface EditorStoreState {
 
   elements: ElementType[];
   selectedElementId: number | null;
+  selectedElementIds: number[];
   setSelectedElementId: (id: number | null) => void;
+  setSelectedElementIds: (ids: number[]) => void;
   pushElement: (element: ElementType) => void;
   addElement: () => void;
+  deleteSelectedElements: () => void;
 
   mouseDownOrigin: { x: number; y: number } | null;
   setMouseDownOrigin: (origin: { x: number; y: number }|null) => void;
+
+  // Selection rectangle state
+  selectionRect: { x: number; y: number; width: number; height: number } | null;
+  setSelectionRect: (rect: { x: number; y: number; width: number; height: number } | null) => void;
 
   drawBackground: () => void;
 
@@ -65,7 +72,17 @@ export const useEditorStore = create<EditorStoreState>()((set, get) => ({
 
   elements: [],
   selectedElementId: null,
+  selectedElementIds: [],
   setSelectedElementId: (id) => set({ selectedElementId: id }),
+  setSelectedElementIds: (ids) => {
+    set((state) => {
+      // Update selection state of all elements
+      state.elements.forEach(e => {
+        e.isSelected = ids.includes(e.id);
+      });
+      return { selectedElementIds: ids };
+    });
+  },
   pushElement: (element) =>
     // add at the first position
     set((state) => ({
@@ -82,6 +99,25 @@ export const useEditorStore = create<EditorStoreState>()((set, get) => ({
     state.pushElement(element);
     element.draw();
   },
+  deleteSelectedElements: () => {
+    set((state) => {
+      const selectedIds = state.selectedElementIds;
+      // Remove selected elements
+      const newElements = state.elements.filter(e => !selectedIds.includes(e.id));
+      // Remove arrows connected to selected elements
+      const newArrows = state.arrows.filter(
+        arrow => !selectedIds.includes(arrow.startElementId) && !selectedIds.includes(arrow.endElementId)
+      );
+      return {
+        elements: newElements,
+        arrows: newArrows,
+        selectedElementIds: [],
+        selectedElementId: null
+      };
+    });
+  },
+  selectionRect: null,
+  setSelectionRect: (rect) => set({ selectionRect: rect }),
 
   mouseDownOrigin: null,
   setMouseDownOrigin: (origin) => set({ mouseDownOrigin: origin }),
@@ -90,6 +126,27 @@ export const useEditorStore = create<EditorStoreState>()((set, get) => ({
     const state = get();
     state.context!.fillStyle = state.canvasOptions.backgroundColor;
     state.context!.fillRect(0, 0, state.canvasOptions.width, state.canvasOptions.height);
+    
+    // Draw selection rectangle if it exists
+    if (state.selectionRect) {
+      state.context!.strokeStyle = "#4F46E5";
+      state.context!.lineWidth = 2;
+      state.context!.strokeRect(
+        state.selectionRect.x,
+        state.selectionRect.y,
+        state.selectionRect.width,
+        state.selectionRect.height
+      );
+      
+      // Fill with semi-transparent color
+      state.context!.fillStyle = "rgba(79, 70, 229, 0.1)";
+      state.context!.fillRect(
+        state.selectionRect.x,
+        state.selectionRect.y,
+        state.selectionRect.width,
+        state.selectionRect.height
+      );
+    }
     
     // Draw all arrows after clearing the background
     console.log('Drawing background, arrows:', state.arrows);

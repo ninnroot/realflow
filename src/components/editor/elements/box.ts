@@ -21,6 +21,7 @@ export class BoxElement extends BaseElement {
   isArrowEnd = false;
   arrowStartPoint: { x: number; y: number } | null = null;
   arrowEndPoint: { x: number; y: number } | null = null;
+  isSelected: boolean = false;
 
   constructor(
     id: number,
@@ -37,7 +38,6 @@ export class BoxElement extends BaseElement {
     this.width = width;
     this.height = height;
     this.redrawAllElements = afterHandleInput;
-
     this.styles = styles;
   }
   isInside(mouseX: number, mouseY: number) {
@@ -280,10 +280,20 @@ export class BoxElement extends BaseElement {
   }
 
   draw() {
-    this.context.strokeStyle = this.styles.strokeStyle;
+    this.context.strokeStyle = this.isSelected ? "#4F46E5" : this.styles.strokeStyle;
     this.context.fillStyle = this.styles.fillStyle;
     this.context.strokeRect(this.x, this.y, this.width, this.height);
     this.context.fillRect(this.x, this.y, this.width, this.height);
+    
+    if (this.isSelected) {
+      // Draw selection handles
+      const handleSize = 8;
+      this.context.fillStyle = "#4F46E5";
+      this.context.fillRect(this.x - handleSize/2, this.y - handleSize/2, handleSize, handleSize); // Top-left
+      this.context.fillRect(this.x + this.width - handleSize/2, this.y - handleSize/2, handleSize, handleSize); // Top-right
+      this.context.fillRect(this.x - handleSize/2, this.y + this.height - handleSize/2, handleSize, handleSize); // Bottom-left
+      this.context.fillRect(this.x + this.width - handleSize/2, this.y + this.height - handleSize/2, handleSize, handleSize); // Bottom-right
+    }
     
     if (this.isNearestElement) {
       this.drawProximateBorder();

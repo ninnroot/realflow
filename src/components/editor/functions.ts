@@ -47,7 +47,7 @@ export const onClick = (event: MouseEvent) => {
 };
 
 export const onMouseDown = (event: MouseEvent) => {
-  const { setMouseDownOrigin, elements, setSelectedElementId, drawBackground } =
+  const { setMouseDownOrigin, elements, setSelectedElementId, drawBackground, setSelectionRect, setSelectedElementIds } =
     useEditorStore.getState();
   const clickedElement = getClickedElement(event);
   
@@ -64,16 +64,49 @@ export const onMouseDown = (event: MouseEvent) => {
 
   // Handle normal dragging
   if (!clickedElement) {
+    // Start selection rectangle
+    setSelectionRect({ x: event.offsetX, y: event.offsetY, width: 0, height: 0 });
+    setSelectedElementIds([]); // Clear previous selection
     return;
   }
+
   setMouseDownOrigin({ x: event.offsetX, y: event.offsetY });
   setSelectedElementId(clickedElement.id);
 };
 
 export const onMouseMove = (event: MouseEvent) => {
   let isAtLeastOneElementDragged = false;
-  const { elements, mouseDownOrigin, drawBackground, setMouseDownOrigin } =
+  const { elements, mouseDownOrigin, drawBackground, setMouseDownOrigin, selectionRect, setSelectionRect, setSelectedElementIds } =
     useEditorStore.getState();
+
+  // Handle selection rectangle
+  if (selectionRect && !mouseDownOrigin) {
+    const width = event.offsetX - selectionRect.x;
+    const height = event.offsetY - selectionRect.y;
+    setSelectionRect({ ...selectionRect, width, height });
+
+    // Select elements within the rectangle
+    const selectedIds = elements
+      .filter(e => {
+        const elementRight = e.x + e.width;
+        const elementBottom = e.y + e.height;
+        const rectRight = selectionRect.x + (width > 0 ? width : 0);
+        const rectBottom = selectionRect.y + (height > 0 ? height : 0);
+        const rectLeft = width > 0 ? selectionRect.x : selectionRect.x + width;
+        const rectTop = height > 0 ? selectionRect.y : selectionRect.y + height;
+
+        return !(elementRight < rectLeft || 
+                e.x > rectRight || 
+                elementBottom < rectTop || 
+                e.y > rectBottom);
+      })
+      .map(e => e.id);
+
+    setSelectedElementIds(selectedIds);
+    drawBackground();
+    elements.forEach(element => element.draw());
+    return;
+  }
 
   // Handle arrow drawing
   const arrowStartElement = elements.find(e => e.isArrowStart);
@@ -194,7 +227,14 @@ const onMouseUp = (event: MouseEvent, canvas: HTMLCanvasElement) => {
     elements,
     drawBackground,
     addArrow,
+    setSelectionRect,
+    selectionRect,
   } = useEditorStore.getState();
+
+  // Clear selection rectangle
+  if (selectionRect) {
+    setSelectionRect(null);
+  }
 
   // Handle arrow completion
   const arrowStartElement = elements.find(e => e.isArrowStart);
@@ -202,7 +242,6 @@ const onMouseUp = (event: MouseEvent, canvas: HTMLCanvasElement) => {
   
   if (arrowStartElement && targetElement && targetElement.proximateBorder) {
     console.log('Creating new arrow connection');
-    // Store the permanent arrow connection in the global store
     addArrow({
       startElementId: arrowStartElement.id,
       endElementId: targetElement.id,
@@ -212,7 +251,6 @@ const onMouseUp = (event: MouseEvent, canvas: HTMLCanvasElement) => {
     arrowStartElement.isArrowStart = false;
     targetElement.isArrowEnd = true;
   } else if (arrowStartElement) {
-    // If we didn't end on a valid target, cancel the arrow
     arrowStartElement.isArrowStart = false;
     arrowStartElement.arrowStartPoint = null;
     arrowStartElement.arrowEndPoint = null;
@@ -228,7 +266,6 @@ const onMouseUp = (event: MouseEvent, canvas: HTMLCanvasElement) => {
   setMouseDownOrigin(null);
   document.body.style.cursor = "default";
   
-  // Ensure we redraw everything
   drawBackground();
   elements.forEach(element => element.draw());
 };
