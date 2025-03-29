@@ -47,7 +47,7 @@ export const onClick = (event: MouseEvent) => {
 };
 
 export const onMouseDown = (event: MouseEvent) => {
-  const { setMouseDownOrigin, elements, setSelectedElementId, drawBackground, setSelectionRect, setSelectedElementIds } =
+  const { setMouseDownOrigin, elements, setSelectedElementId, drawBackground, setSelectionRect, setSelectedElementIds, selectedElementIds } =
     useEditorStore.getState();
   const clickedElement = getClickedElement(event);
   
@@ -70,14 +70,40 @@ export const onMouseDown = (event: MouseEvent) => {
     return;
   }
 
+  // If clicking an unselected element without shift, clear other selections
+  if (!event.shiftKey && !selectedElementIds.includes(clickedElement.id)) {
+    setSelectedElementIds([clickedElement.id]);
+  }
+  // If clicking with shift, toggle the element's selection
+  else if (event.shiftKey) {
+    if (selectedElementIds.includes(clickedElement.id)) {
+      setSelectedElementIds(selectedElementIds.filter(id => id !== clickedElement.id));
+    } else {
+      setSelectedElementIds([...selectedElementIds, clickedElement.id]);
+    }
+  }
+  // If clicking an already selected element, maintain the selection
+  else if (selectedElementIds.includes(clickedElement.id)) {
+    // Do nothing, keep the current selection
+  }
+
   setMouseDownOrigin({ x: event.offsetX, y: event.offsetY });
   setSelectedElementId(clickedElement.id);
 };
 
 export const onMouseMove = (event: MouseEvent) => {
   let isAtLeastOneElementDragged = false;
-  const { elements, mouseDownOrigin, drawBackground, setMouseDownOrigin, selectionRect, setSelectionRect, setSelectedElementIds } =
+  const { elements, mouseDownOrigin, drawBackground, setMouseDownOrigin, selectionRect, setSelectionRect, setSelectedElementIds, selectedElementIds } =
     useEditorStore.getState();
+
+  // Reset all elements' nearest state
+  elements.forEach(e => {
+    e.isNearestElement = false;
+    e.proximateBorder = null;
+  });
+
+  // Handle arrow drawing
+  const arrowStartElement = elements.find(e => e.isArrowStart);
 
   // Handle selection rectangle
   if (selectionRect && !mouseDownOrigin) {
@@ -108,15 +134,34 @@ export const onMouseMove = (event: MouseEvent) => {
     return;
   }
 
-  // Handle arrow drawing
-  const arrowStartElement = elements.find(e => e.isArrowStart);
-  if (arrowStartElement) {
-    // Reset all elements' nearest state
-    elements.forEach(e => {
-      e.isNearestElement = false;
-      e.proximateBorder = null;
-    });
+  // Find the nearest element to the cursor for border highlighting
+  if (!mouseDownOrigin && !arrowStartElement) {
+    let nearestElement = null;
+    let minDistance = Infinity;
+    
+    for (const e of elements) {
+      const centerX = e.x + e.width / 2;
+      const centerY = e.y + e.height / 2;
+      const distance = Math.sqrt(
+        Math.pow(centerX - event.offsetX, 2) +
+        Math.pow(centerY - event.offsetY, 2)
+      );
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestElement = e;
+      }
+    }
 
+    // Only check borders if we're within a certain distance of the nearest element
+    const MIN_DISTANCE_FOR_BORDER_CHECK = 50;
+    if (nearestElement && minDistance < MIN_DISTANCE_FOR_BORDER_CHECK) {
+      nearestElement.isNearestElement = true;
+      nearestElement.checkProximateBorder(event.offsetX, event.offsetY);
+    }
+  }
+
+  if (arrowStartElement) {
     // Find the nearest element to the cursor
     let nearestElement = null;
     let minDistance = Infinity;
@@ -160,59 +205,48 @@ export const onMouseMove = (event: MouseEvent) => {
       arrowStartElement.arrowEndPoint = { x: event.offsetX, y: event.offsetY };
     }
 
-    // Only redraw if we're not already in a redraw cycle
-    if (!isAtLeastOneElementDragged) {
-      drawBackground();
-      elements.forEach(element => element.draw());
-    }
+    drawBackground();
+    elements.forEach(element => element.draw());
     return;
-  }
-
-  let nearestElement = null;
-  // calculate the nearest element to the mouse cursor
-  for (const e of elements) {
-    e.isNearestElement = false;
-    const centerX = e.x + e.width / 2;
-    const centerY = e.y + e.height / 2;
-    const distance = Math.sqrt(
-      Math.pow(centerX - event.offsetX, 2) +
-        Math.pow(centerY - event.offsetY, 2)
-    );
-    if (!nearestElement || distance < nearestElement.distance) {
-      nearestElement = { element: e, distance };
-    }
-  }
-  if (nearestElement?.element) {
-    if (nearestElement?.element) {
-      nearestElement.element.isNearestElement = true;
-      nearestElement.element.checkProximateBorder(event.offsetX, event.offsetY);
-    }
   }
 
   // Handle normal dragging
   if (mouseDownOrigin) {
-    for (const e of elements) {
-      if (e.isInside(event.offsetX, event.offsetY)) {
-        e.onDrag(
-          event.offsetX,
-          event.offsetY,
-          mouseDownOrigin.x,
-          mouseDownOrigin.y
-        );
+    const clickedElement = getClickedElement({
+      offsetX: mouseDownOrigin.x,
+      offsetY: mouseDownOrigin.y
+    } as MouseEvent);
+    
+    // If we're dragging a selected element, move all selected elements
+    if (clickedElement && selectedElementIds.includes(clickedElement.id)) {
+      const deltaX = event.offsetX - mouseDownOrigin.x;
+      const deltaY = event.offsetY - mouseDownOrigin.y;
 
-        document.body.style.cursor = "move";
+      elements.forEach(element => {
+        if (selectedElementIds.includes(element.id)) {
+          element.onDrag(deltaX, deltaY);
+          isAtLeastOneElementDragged = true;
+        }
+      });
 
-        isAtLeastOneElementDragged = true;
-      }
-      if (isAtLeastOneElementDragged) {
-        break;
-      }
+      document.body.style.cursor = "move";
     }
+    // If we're dragging an unselected element, just move that one
+    else if (clickedElement) {
+      const deltaX = event.offsetX - mouseDownOrigin.x;
+      const deltaY = event.offsetY - mouseDownOrigin.y;
+      clickedElement.onDrag(deltaX, deltaY);
+      document.body.style.cursor = "move";
+      isAtLeastOneElementDragged = true;
+    }
+
     setMouseDownOrigin({
       x: event.offsetX,
       y: event.offsetY,
     });
   }
+
+  // Always redraw to ensure border highlights are shown
   drawBackground();
   elements.forEach((element) => {
     element.draw();

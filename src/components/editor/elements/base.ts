@@ -31,8 +31,8 @@ export class BaseElement {
 
   }
 
-  onDrag(offsetX:number,offsetY:number,originX:number,originY: number){
-    this.x=this.x+(offsetX-originX)
-    this.y=this.y+(offsetY-originY)
+  onDrag(deltaX: number, deltaY: number) {
+    this.x += deltaX;
+    this.y += deltaY;
   }
 }

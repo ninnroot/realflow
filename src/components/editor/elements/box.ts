@@ -169,17 +169,15 @@ export class BoxElement extends BaseElement {
     originY: number
   ): void {
     if (this.isInside(offsetX, offsetY)) {
-      this.onDrag(offsetX, offsetY, originX, originY);
+      const deltaX = offsetX - originX;
+      const deltaY = offsetY - originY;
+      this.onDrag(deltaX, deltaY);
     }
   }
 
-  onDrag(
-    offsetX: number,
-    offsetY: number,
-    originX: number,
-    originY: number
-  ): void {
-    super.onDrag(offsetX, offsetY, originX, originY);
+  onDrag(deltaX: number, deltaY: number): void {
+    this.x += deltaX;
+    this.y += deltaY;
     this.can_render_text = true;
     // Ensure input is removed when dragging
     if (this.input) {
