@@ -63,6 +63,30 @@ export const onMouseMove = (event: MouseEvent) => {
   let isAtLeastOneElementDragged = false;
   const { elements, mouseDownOrigin, drawBackground, setMouseDownOrigin } =
     useEditorStore.getState();
+
+  let nearestElement = null;
+  // calculate the nearest element to the mouse cursor
+  // get the center of each element
+  // set the nearest element to the one with the closest center to the mouse cursor
+  for (const e of elements) {
+    e.isNearestElement = false;
+    const centerX = e.x + e.width / 2;
+    const centerY = e.y + e.height / 2;
+    const distance = Math.sqrt(
+      Math.pow(centerX - event.offsetX, 2) +
+        Math.pow(centerY - event.offsetY, 2)
+    );
+    if (!nearestElement || distance < nearestElement.distance) {
+      nearestElement = { element: e, distance };
+    }
+  }
+  if (nearestElement?.element) {
+    if (nearestElement?.element) {
+      nearestElement.element.isNearestElement = true;
+      nearestElement.element.checkProximateBorder(event.offsetX, event.offsetY);
+    }
+  }
+
   // if mouseDownOrigin is set, then at least one element is selected
   // meaning, the cursor was on top of an element when the mouseDown event was triggered
   // it doesn't make sense to drag an element if the cursor-drag started outside of an element
@@ -88,12 +112,11 @@ export const onMouseMove = (event: MouseEvent) => {
       x: event.offsetX,
       y: event.offsetY,
     });
-
-    drawBackground();
-    elements.forEach((element) => {
-      element.draw();
-    });
   }
+  drawBackground();
+  elements.forEach((element) => {
+    element.draw();
+  });
 };
 
 const onMouseUp = (event: MouseEvent, canvas: HTMLCanvasElement) => {

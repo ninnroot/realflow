@@ -17,9 +17,20 @@ export class BaseElement {
   onClick(input: HTMLInputElement, afterHandleInput: () => void){
     
   }
-  onMouseUp(){
+  onMouseUp(
+
+  ){
     
   }
+  onMouseMove(
+    offsetX: number,
+    offsetY: number,
+    originX: number,
+    originY: number
+  ){
+
+  }
+
   onDrag(offsetX:number,offsetY:number,originX:number,originY: number){
     this.x=this.x+(offsetX-originX)
     this.y=this.y+(offsetY-originY)
