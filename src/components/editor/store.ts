@@ -112,6 +112,18 @@ export const useEditorStore = create<EditorStoreState>()((set, get) => ({
   addArrow: (arrow) => {
     console.log('Adding arrow:', arrow);
     set((state) => {
+      // Check if an arrow already exists between these boxes (in either direction)
+      const existingArrow = state.arrows.find(
+        existing => 
+          (existing.startElementId === arrow.startElementId && existing.endElementId === arrow.endElementId) ||
+          (existing.startElementId === arrow.endElementId && existing.endElementId === arrow.startElementId)
+      );
+
+      if (existingArrow) {
+        console.log('Arrow already exists between these boxes');
+        return state; // Return unchanged state if arrow already exists
+      }
+
       const newArrows = [...state.arrows, arrow];
       console.log('New arrows state:', newArrows);
       return { arrows: newArrows };
