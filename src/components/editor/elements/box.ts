@@ -181,7 +181,11 @@ export class BoxElement extends BaseElement {
   ): void {
     super.onDrag(offsetX, offsetY, originX, originY);
     this.can_render_text = true;
-    this.input?.remove();
+    // Ensure input is removed when dragging
+    if (this.input) {
+      this.input.remove();
+      this.input = null;
+    }
   }
 
   drawProximateBorder() {

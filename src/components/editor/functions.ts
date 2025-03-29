@@ -256,6 +256,11 @@ const onMouseUp = (event: MouseEvent, canvas: HTMLCanvasElement) => {
     arrowStartElement.arrowEndPoint = null;
   }
 
+  // Ensure all elements' input fields are cleaned up
+  elements.forEach(element => {
+    element.onMouseUp();
+  });
+
   if (selectedElementId !== null) {
     const element = elements.find((e) => e.id === selectedElementId);
     if (element) {
