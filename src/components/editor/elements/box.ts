@@ -304,7 +304,7 @@ export class BoxElement extends BaseElement {
         break;
     }
     
-    // Draw arrowhead using the last segment's angle
+    // Calculate the angle for the arrowhead based on the last segment
     const angle = Math.atan2(
       endPoint.y - lastSegmentStart.y,
       endPoint.x - lastSegmentStart.x
@@ -312,6 +312,8 @@ export class BoxElement extends BaseElement {
     const arrowLength = 15;
     const arrowWidth = 10;
     
+    // Draw the arrowhead as part of the same path
+    this.context.moveTo(endPoint.x, endPoint.y);
     this.context.lineTo(
       endPoint.x - arrowLength * Math.cos(angle - Math.PI / 6),
       endPoint.y - arrowLength * Math.sin(angle - Math.PI / 6)
@@ -322,6 +324,7 @@ export class BoxElement extends BaseElement {
       endPoint.y - arrowLength * Math.sin(angle + Math.PI / 6)
     );
     
+    // Set the style and stroke the entire path
     this.context.strokeStyle = isSelected ? "#4F46E5" : this.styles.strokeStyle;
     this.context.lineWidth = isSelected ? 3 : 2;
     this.context.stroke();
