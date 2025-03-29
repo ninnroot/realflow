@@ -1,5 +1,6 @@
 import { defaultStyles, Styles } from "../styles";
 import { BaseElement } from "./base";
+import { useEditorStore } from "../store";
 
 export class BoxElement extends BaseElement {
   width: number = 0;
@@ -16,6 +17,10 @@ export class BoxElement extends BaseElement {
   redrawAllElements: () => void;
   proximateBorder: null | "top" | "bottom" | "left" | "right" = null;
   isNearestElement = false;
+  isArrowStart = false;
+  isArrowEnd = false;
+  arrowStartPoint: { x: number; y: number } | null = null;
+  arrowEndPoint: { x: number; y: number } | null = null;
 
   constructor(
     id: number,
@@ -87,15 +92,31 @@ export class BoxElement extends BaseElement {
       this.proximateBorder = null;
       return;
     }
+
     const borderDistance = 10;
-    if (mouseX < this.x + borderDistance) {
-      this.proximateBorder = "left";
-    } else if (mouseX > this.x + this.width - borderDistance) {
-      this.proximateBorder = "right";
-    } else if (mouseY < this.y + borderDistance) {
-      this.proximateBorder = "top";
-    } else if (mouseY > this.y + this.height - borderDistance) {
-      this.proximateBorder = "bottom";
+    const isNearLeft = mouseX < this.x + borderDistance && mouseX > this.x;
+    const isNearRight = mouseX > this.x + this.width - borderDistance && mouseX < this.x + this.width;
+    const isNearTop = mouseY < this.y + borderDistance && mouseY > this.y;
+    const isNearBottom = mouseY > this.y + this.height - borderDistance && mouseY < this.y + this.height;
+
+    // If we're near multiple borders, choose the closest one
+    if (isNearLeft || isNearRight || isNearTop || isNearBottom) {
+      const distances = {
+        left: isNearLeft ? mouseX - this.x : Infinity,
+        right: isNearRight ? this.x + this.width - mouseX : Infinity,
+        top: isNearTop ? mouseY - this.y : Infinity,
+        bottom: isNearBottom ? this.y + this.height - mouseY : Infinity
+      };
+
+      const closestBorder = Object.entries(distances).reduce((a, b) => 
+        a[1] < b[1] ? a : b
+      );
+
+      if (closestBorder[1] <= borderDistance) {
+        this.proximateBorder = closestBorder[0] as "top" | "bottom" | "left" | "right";
+      } else {
+        this.proximateBorder = null;
+      }
     } else {
       this.proximateBorder = null;
     }
@@ -164,8 +185,12 @@ export class BoxElement extends BaseElement {
   }
 
   drawProximateBorder() {
+    if (!this.proximateBorder) return;
+    
     this.context.strokeStyle = "red";
     this.context.fillStyle = "red";
+    this.context.lineWidth = 2;
+    
     switch (this.proximateBorder) {
       case "top":
         this.context.fillRect(this.x, this.y, this.width, 5);
@@ -202,15 +227,73 @@ export class BoxElement extends BaseElement {
     this.proximateBorder = null;
   }
 
+  getBorderPoint(border: "top" | "bottom" | "left" | "right"): { x: number; y: number } {
+    if (!border) {
+      // Default to center of the box if no border specified
+      return { 
+        x: this.x + this.width / 2, 
+        y: this.y + this.height / 2 
+      };
+    }
+
+    switch (border) {
+      case "top":
+        return { x: this.x + this.width / 2, y: this.y };
+      case "bottom":
+        return { x: this.x + this.width / 2, y: this.y + this.height };
+      case "left":
+        return { x: this.x, y: this.y + this.height / 2 };
+      case "right":
+        return { x: this.x + this.width, y: this.y + this.height / 2 };
+      default:
+        // Default to center of the box for any invalid border
+        return { 
+          x: this.x + this.width / 2, 
+          y: this.y + this.height / 2 
+        };
+    }
+  }
+
+  drawArrow(startPoint: { x: number; y: number }, endPoint: { x: number; y: number }) {
+    this.context.beginPath();
+    this.context.moveTo(startPoint.x, startPoint.y);
+    this.context.lineTo(endPoint.x, endPoint.y);
+    
+    // Draw arrowhead
+    const angle = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x);
+    const arrowLength = 15;
+    const arrowWidth = 10;
+    
+    this.context.lineTo(
+      endPoint.x - arrowLength * Math.cos(angle - Math.PI / 6),
+      endPoint.y - arrowLength * Math.sin(angle - Math.PI / 6)
+    );
+    this.context.moveTo(endPoint.x, endPoint.y);
+    this.context.lineTo(
+      endPoint.x - arrowLength * Math.cos(angle + Math.PI / 6),
+      endPoint.y - arrowLength * Math.sin(angle + Math.PI / 6)
+    );
+    
+    this.context.strokeStyle = this.styles.strokeStyle;
+    this.context.lineWidth = 2;
+    this.context.stroke();
+  }
+
   draw() {
     this.context.strokeStyle = this.styles.strokeStyle;
     this.context.fillStyle = this.styles.fillStyle;
     this.context.strokeRect(this.x, this.y, this.width, this.height);
     this.context.fillRect(this.x, this.y, this.width, this.height);
+    
     if (this.isNearestElement) {
       this.drawProximateBorder();
     } else {
       this.removeProximateBorder();
+    }
+
+    // Draw the current arrow being drawn (if any)
+    if (this.isArrowStart && this.arrowStartPoint && this.arrowEndPoint) {
+      this.drawArrow(this.arrowStartPoint, this.arrowEndPoint);
     }
 
     if (this.can_render_text) {

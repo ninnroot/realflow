@@ -50,11 +50,22 @@ export const onMouseDown = (event: MouseEvent) => {
   const { setMouseDownOrigin, elements, setSelectedElementId, drawBackground } =
     useEditorStore.getState();
   const clickedElement = getClickedElement(event);
-  // no element clicked at the start of the mouseDown event
+  
+  // Check if we clicked on a border of an element
+  if (clickedElement && clickedElement.proximateBorder) {
+    clickedElement.isArrowStart = true;
+    const startPoint = clickedElement.getBorderPoint(clickedElement.proximateBorder);
+    if (startPoint) {
+      clickedElement.arrowStartPoint = startPoint;
+      clickedElement.arrowEndPoint = { x: event.offsetX, y: event.offsetY };
+    }
+    return;
+  }
+
+  // Handle normal dragging
   if (!clickedElement) {
     return;
   }
-  // only set mouseDownOrigin if at least one element is clicked (selected)
   setMouseDownOrigin({ x: event.offsetX, y: event.offsetY });
   setSelectedElementId(clickedElement.id);
 };
@@ -64,10 +75,68 @@ export const onMouseMove = (event: MouseEvent) => {
   const { elements, mouseDownOrigin, drawBackground, setMouseDownOrigin } =
     useEditorStore.getState();
 
+  // Handle arrow drawing
+  const arrowStartElement = elements.find(e => e.isArrowStart);
+  if (arrowStartElement) {
+    // Reset all elements' nearest state
+    elements.forEach(e => {
+      e.isNearestElement = false;
+      e.proximateBorder = null;
+    });
+
+    // Find the nearest element to the cursor
+    let nearestElement = null;
+    let minDistance = Infinity;
+    
+    for (const e of elements) {
+      if (e.id === arrowStartElement.id) continue;
+      
+      const centerX = e.x + e.width / 2;
+      const centerY = e.y + e.height / 2;
+      const distance = Math.sqrt(
+        Math.pow(centerX - event.offsetX, 2) +
+        Math.pow(centerY - event.offsetY, 2)
+      );
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestElement = e;
+      }
+    }
+
+    // Only check borders if we're within a certain distance of the nearest element
+    const MIN_DISTANCE_FOR_BORDER_CHECK = 50;
+    if (nearestElement && minDistance < MIN_DISTANCE_FOR_BORDER_CHECK) {
+      nearestElement.isNearestElement = true;
+      nearestElement.checkProximateBorder(event.offsetX, event.offsetY);
+      
+      if (nearestElement.proximateBorder) {
+        // If we're near a border, snap to it
+        const endPoint = nearestElement.getBorderPoint(nearestElement.proximateBorder);
+        if (endPoint) {
+          arrowStartElement.arrowEndPoint = endPoint;
+        } else {
+          arrowStartElement.arrowEndPoint = { x: event.offsetX, y: event.offsetY };
+        }
+      } else {
+        // Otherwise, follow the cursor
+        arrowStartElement.arrowEndPoint = { x: event.offsetX, y: event.offsetY };
+      }
+    } else {
+      // No element nearby or too far, follow the cursor
+      arrowStartElement.arrowEndPoint = { x: event.offsetX, y: event.offsetY };
+    }
+
+    // Only redraw if we're not already in a redraw cycle
+    if (!isAtLeastOneElementDragged) {
+      drawBackground();
+      elements.forEach(element => element.draw());
+    }
+    return;
+  }
+
   let nearestElement = null;
   // calculate the nearest element to the mouse cursor
-  // get the center of each element
-  // set the nearest element to the one with the closest center to the mouse cursor
   for (const e of elements) {
     e.isNearestElement = false;
     const centerX = e.x + e.width / 2;
@@ -87,9 +156,7 @@ export const onMouseMove = (event: MouseEvent) => {
     }
   }
 
-  // if mouseDownOrigin is set, then at least one element is selected
-  // meaning, the cursor was on top of an element when the mouseDown event was triggered
-  // it doesn't make sense to drag an element if the cursor-drag started outside of an element
+  // Handle normal dragging
   if (mouseDownOrigin) {
     for (const e of elements) {
       if (e.isInside(event.offsetX, event.offsetY)) {
@@ -126,11 +193,33 @@ const onMouseUp = (event: MouseEvent, canvas: HTMLCanvasElement) => {
     selectedElementId,
     elements,
     drawBackground,
+    addArrow,
   } = useEditorStore.getState();
+
+  // Handle arrow completion
+  const arrowStartElement = elements.find(e => e.isArrowStart);
+  const targetElement = getClickedElement(event);
+  
+  if (arrowStartElement && targetElement && targetElement.proximateBorder) {
+    console.log('Creating new arrow connection');
+    // Store the permanent arrow connection in the global store
+    addArrow({
+      startElementId: arrowStartElement.id,
+      endElementId: targetElement.id,
+      startBorder: arrowStartElement.proximateBorder!,
+      endBorder: targetElement.proximateBorder
+    });
+    arrowStartElement.isArrowStart = false;
+    targetElement.isArrowEnd = true;
+  } else if (arrowStartElement) {
+    // If we didn't end on a valid target, cancel the arrow
+    arrowStartElement.isArrowStart = false;
+    arrowStartElement.arrowStartPoint = null;
+    arrowStartElement.arrowEndPoint = null;
+  }
 
   if (selectedElementId !== null) {
     const element = elements.find((e) => e.id === selectedElementId);
-
     if (element) {
       element.onMouseUp();
     }
@@ -138,4 +227,8 @@ const onMouseUp = (event: MouseEvent, canvas: HTMLCanvasElement) => {
   setSelectedElementId(null);
   setMouseDownOrigin(null);
   document.body.style.cursor = "default";
+  
+  // Ensure we redraw everything
+  drawBackground();
+  elements.forEach(element => element.draw());
 };
