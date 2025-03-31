@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Trash } from "lucide-react";
+import { StylePanel } from "./style-panel";
 
 export const Menu = () => {
   const {
@@ -22,46 +23,53 @@ export const Menu = () => {
   } = useEditorStore();
 
   return (
-    <div className="flex gap-2 items-center">
-      <Button
-        onClick={() => {
-          addElement();
-          console.log("add box");
-        }}
-      >
-        Add Box
-      </Button>
-
-      <Button
-        onClick={() => {
-          deleteSelectedElements();
-          deletedSelectedArrows();
-        }}
-        disabled={selectedElementIds.length === 0 && !selectedArrowId}
-        variant="destructive"
-        size={"icon"}
-      >
-        <Trash></Trash>
-      </Button>
-
+    <div className="flex items-center gap-4 p-2 border-b">
       <div className="flex items-center gap-2">
-        <span className="text-sm">Arrow Style:</span>
-        <Select
-          value={arrowStyle}
-          onValueChange={(value: "direct" | "right-angle" | "curve") =>
-            setArrowStyle(value)
-          }
+        <Button
+          onClick={() => {
+            addElement();
+            console.log("add box");
+          }}
+          size="sm"
         >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select arrow style" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="direct">Direct</SelectItem>
-            <SelectItem value="right-angle">Right Angle</SelectItem>
-            <SelectItem value="curve">Curve</SelectItem>
-          </SelectContent>
-        </Select>
+          Add Box
+        </Button>
+
+        <Button
+          onClick={() => {
+            deleteSelectedElements();
+            deletedSelectedArrows();
+          }}
+          disabled={selectedElementIds.length === 0 && !selectedArrowId}
+          variant="destructive"
+          size="sm"
+        >
+          <Trash className="h-4 w-4" />
+        </Button>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm">Arrow Style:</span>
+          <Select
+            value={arrowStyle}
+            onValueChange={(value: "direct" | "right-angle" | "curve") =>
+              setArrowStyle(value)
+            }
+          >
+            <SelectTrigger className="h-8 w-[140px]">
+              <SelectValue placeholder="Select arrow style" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="direct">Direct</SelectItem>
+              <SelectItem value="right-angle">Right Angle</SelectItem>
+              <SelectItem value="curve">Curve</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
+      <div className="h-4 w-px bg-gray-200" />
+
+      <StylePanel />
     </div>
   );
 };

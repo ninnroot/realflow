@@ -48,6 +48,7 @@ export interface EditorStoreState {
   deleteSelectedElements: () => void;
   deletedSelectedArrows: () => void;
   updateElementText: (elementId: number, text: string) => void;
+  updateElementStyles: (elementIds: number[], styles: Partial<Styles>) => void;
 
   mouseDownOrigin: { x: number; y: number } | null;
   setMouseDownOrigin: (origin: { x: number; y: number }|null) => void;
@@ -315,6 +316,20 @@ export const useEditorStore = create<EditorStoreState>()(
             element.draw();
           }
           return state;
+        });
+      },
+      updateElementStyles: (elementIds: number[], styles: Partial<Styles>) => {
+        set((state) => {
+          const updatedElements = state.elements.map(element => {
+            if (elementIds.includes(element.id)) {
+              element.styles = {
+                ...element.styles,
+                ...styles
+              };
+            }
+            return element;
+          });
+          return { elements: updatedElements };
         });
       },
     }),

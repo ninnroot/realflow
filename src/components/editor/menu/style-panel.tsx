@@ -2,34 +2,44 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useEditorStore } from "../store";
+import { Styles } from "../styles";
 
 export const StylePanel = () => {
     const { selectedElementIds, elements, updateElementStyles } = useEditorStore();
     
     // Get the first selected element's styles (if any)
     const selectedElement = elements.find(e => e.id === selectedElementIds[0]);
-    const styles = selectedElement?.styles || {};
+    const styles = selectedElement?.styles || {} as Styles;
 
-    const handleStyleChange = (key: string, value: string) => {
+    const handleStyleChange = (key: keyof Styles, value: string | number) => {
         if (selectedElementIds.length === 0) return;
         
         updateElementStyles(selectedElementIds, {
-            ...styles,
             [key]: value
         });
     };
 
     return (
-        <div className="p-4 border rounded-lg space-y-4">
-            <h3 className="font-semibold">Style Panel</h3>
-            
-            <div className="space-y-2">
-                <Label>Font Family</Label>
+        <div className="flex gap-4 items-center">
+            <div className="flex items-center gap-2">
+                <Label className="text-sm">Font Size:</Label>
+                <Input 
+                    type="number" 
+                    value={styles.fontSize as number}
+                    onChange={(e) => handleStyleChange('fontSize', parseInt(e.target.value))}
+                    min={8}
+                    max={72}
+                    className="h-8 w-20"
+                />
+            </div>
+
+            <div className="flex items-center gap-2">
+                <Label className="text-sm">Font:</Label>
                 <Select 
                     value={styles.fontFamily as string} 
                     onValueChange={(value) => handleStyleChange('fontFamily', value)}
                 >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8 w-[140px]">
                         <SelectValue placeholder="Select font" />
                     </SelectTrigger>
                     <SelectContent>
@@ -41,42 +51,24 @@ export const StylePanel = () => {
                 </Select>
             </div>
 
-            <div className="space-y-2">
-                <Label>Background Color</Label>
+            <div className="flex items-center gap-2">
+                <Label className="text-sm">Background:</Label>
                 <Input 
                     type="color" 
                     value={styles.fillStyle as string}
                     onChange={(e) => handleStyleChange('fillStyle', e.target.value)}
-                    className="h-10 w-full"
+                    className="h-8 w-10 p-1"
                 />
             </div>
 
-            <div className="space-y-2">
-                <Label>Text Color</Label>
+            <div className="flex items-center gap-2">
+                <Label className="text-sm">Text:</Label>
                 <Input 
                     type="color" 
                     value={styles.strokeStyle as string}
                     onChange={(e) => handleStyleChange('strokeStyle', e.target.value)}
-                    className="h-10 w-full"
+                    className="h-8 w-10 p-1"
                 />
-            </div>
-
-            <div className="space-y-2">
-                <Label>Arrow Direction</Label>
-                <Select 
-                    value={styles.arrowDirection || 'right'} 
-                    onValueChange={(value) => handleStyleChange('arrowDirection', value)}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select direction" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="right">Right</SelectItem>
-                        <SelectItem value="left">Left</SelectItem>
-                        <SelectItem value="up">Up</SelectItem>
-                        <SelectItem value="down">Down</SelectItem>
-                    </SelectContent>
-                </Select>
             </div>
         </div>
     );
