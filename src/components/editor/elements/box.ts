@@ -33,13 +33,15 @@ export class BoxElement extends BaseElement {
     y: number = 0,
     width: number = 100,
     height: number = 100,
-    styles: Styles = defaultStyles
+    styles: Styles = defaultStyles,
+    initialText: string = ""
   ) {
     super(id, context, x, y, drawBackground);
     this.width = width;
     this.height = height;
     this.redrawAllElements = afterHandleInput;
     this.styles = styles;
+    this.text = initialText;
   }
   isInside(mouseX: number, mouseY: number) {
     return (
@@ -55,12 +57,12 @@ export class BoxElement extends BaseElement {
     this.context.font = `${this.styles.fontStyle} ${this.styles.fontWeight} ${this.styles.fontSize}px ${this.styles.fontFamily}`;
 
     // calculate text properties
-    this.text = (e.target as HTMLInputElement).value;
-    const longestLine = this.text.split("\n").reduce((a, b) => {
+    const newText = (e.target as HTMLInputElement).value;
+    const longestLine = newText.split("\n").reduce((a, b) => {
       return a.length > b.length ? a : b;
     });
     const textProps = this.context.measureText(longestLine);
-    const lineCount = this.text.split("\n").length;
+    const lineCount = newText.split("\n").length;
     const longestLineLength = textProps.width;
     const totalLineHeight = lineCount * 1.2 * (this.styles.fontSize as number);
 
@@ -71,7 +73,9 @@ export class BoxElement extends BaseElement {
       this.width = longestLineLength + this.TEXT_PADDING_X * 2;
     }
     console.log(this.width, this.height);
-    this.draw();
+
+    // Update text through the store to sync across tabs
+    useEditorStore.getState().updateElementText(this.id, newText);
     this.redrawAllElements();
 
     this.INPUT_WIDTH = this.width - this.TEXT_PADDING_X * 2;
